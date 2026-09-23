@@ -1,0 +1,106 @@
+import wollok.game.*
+
+class Nave {
+	var property position
+	var property vida
+	var property danioBase
+	
+	method estaViva() = vida > 0 
+	
+	method recibirDanio(cantidad){
+		 vida = (vida - cantidad).max(0)
+		 if (!self.estaViva()){
+		 	self.morir()
+		 }
+	}
+	
+	method morir(){
+	//Lógica de Muerte independiente de cada Jugador
+	}
+	
+	method distanciaManhattanA(otraNave){
+		return (position.x() - otraNave.position().x()).abs() + (position.y() - otraNave.position().y()).abs()
+	}
+	
+}
+
+class NaveJugador inherits Nave (vida = 100, danioBase = 25){
+	
+	var property escudo = 20
+	
+    var property position = game.at(5,1)
+
+    method image() = "nave.png"
+    
+/*por el momento no usamos override pero es lo que debemos hacer acá
+    method recibirDanio(cantidad){
+    }
+*/   
+}
+
+
+class EnemigoInvasor inherits Nave (vida = 30, danioBase = 15){
+	
+	/*por el momento no usamos override pero es lo que debemos hacer acá
+    method recibirDanio(cantidad){
+    }
+*/  
+
+	method actuarTurno(jugadores, arena){
+		
+		const jugadorCercano = jugadores.min({ j => self.distanciaManhattanA(j) })
+		
+		if (self.distanciaManhattanA(jugadorCercano) == 1){
+			jugadorCercano.recibirDanio(danioBase)
+		} 
+		else{
+			position = position.down(1)
+		}
+	}
+}
+
+
+class EnemigoDefensivo inherits Nave (vida = 30, danioBase = 15){
+	
+	var blindaje = 5
+	
+	/*por el momento no usamos override pero es lo que debemos hacer acá
+    method recibirDanio(cantidad){
+    }
+*/ 
+	
+	method actuarTurno(jugadores, arena) {
+    const objetivo = jugadores.findOrDefault(
+        { j => j.estaViva() && j.position().x() == position.x() }, 
+        null
+    )
+
+    if (objetivo != null) {
+        objetivo.recibirDanio(danioBase)
+    }
+}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

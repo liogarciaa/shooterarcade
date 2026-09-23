@@ -1,0 +1,16 @@
+import wollok.game.*
+import jugador.*
+
+program juego {
+
+    game.width(11)
+    game.height(11)
+
+    game.cellSize(50)
+
+    game.title("Shooter")
+
+    game.addVisual(jugador)
+
+    game.start()
+}

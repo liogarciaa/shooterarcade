@@ -1,0 +1,65 @@
+import jugador.* // o el nombre que tenga tu archivo .wlk
+import wollok.game.*
+
+describe "Pruebas iniciales de combate y turnos" {
+
+    test "Una nave recibe danio y reduce su vida" {
+        const nave = new Nave(vida = 100, danioBase = 10, position = game.at(0, 0))
+        nave.recibirDanio(30)
+        assert.equals(70, nave.vida())
+    }
+
+    test "La vida nunca baja de 0" {
+        const nave = new Nave(vida = 20, danioBase = 10, position = game.at(0, 0))
+        nave.recibirDanio(50)
+        assert.equals(0, nave.vida())
+        assert.notThat(nave.estaViva())
+    }
+
+    test "EnemigoInvasor ataca si esta pegado al jugador" {
+        const jugador = new NaveJugador(position = game.at(5, 1))
+        // El invasor esta en (5, 2), es decir a 1 casilla de distancia
+        const invasor = new EnemigoInvasor(position = game.at(5, 2))
+        
+        invasor.actuarTurno([jugador], null)
+
+        // Verificamos que el jugador recibio 15 de danio (100 - 15 = 85)
+        assert.equals(85, jugador.vida())
+        // Verificamos que el invasor NO se movio porque ataco
+        assert.equals(game.at(5, 2), invasor.position())
+    }
+
+    test "EnemigoInvasor baja 1 celda si esta lejos del jugador" {
+        const jugador = new NaveJugador(position = game.at(5, 1))
+        // El invasor esta en (5, 4), a 3 casillas de distancia
+        const invasor = new EnemigoInvasor(position = game.at(5, 4))
+        
+        invasor.actuarTurno([jugador], null)
+
+        // El jugador no sufrio danio
+        assert.equals(100, jugador.vida())
+        // El invasor descendio a Y = 3
+        assert.equals(game.at(5, 3), invasor.position())
+    }
+
+    test "EnemigoDefensivo ataca a distancia si comparte columna X" {
+        const jugador = new NaveJugador(position = game.at(3, 1))
+        // Esta lejos en Y, pero en la misma columna X (3)
+        const defensivo = new EnemigoDefensivo(position = game.at(3, 8))
+
+        defensivo.actuarTurno([jugador], null)
+
+        // El defensivo hace 15 de danio
+        assert.equals(85, jugador.vida())
+    }
+
+    test "EnemigoDefensivo no ataca si no comparte columna" {
+        const jugador = new NaveJugador(position = game.at(2, 1))
+        const defensivo = new EnemigoDefensivo(position = game.at(5, 8))
+
+        defensivo.actuarTurno([jugador], null)
+
+        // El jugador queda intacto
+        assert.equals(100, jugador.vida())
+    }
+}
