@@ -1,4 +1,4 @@
-import jugador.* // o el nombre que tenga tu archivo .wlk
+import jugador.* 
 import wollok.game.*
 
 describe "Pruebas iniciales de combate y turnos" {
