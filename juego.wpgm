@@ -1,16 +1,19 @@
 import wollok.game.*
 import jugador.*
+import partida.*
 
 program juego {
 
-    game.width(11)
-    game.height(11)
-
+    game.width(partida.arena().ancho())
+    game.height(partida.arena().alto())
+    
     game.cellSize(50)
 
     game.title("Shooter")
-
-    game.addVisual(jugador)
+	
+	const jugadorPrincipal = partida.jugadores().first()
+		
+    game.addVisual(jugadorPrincipal)
 
     game.start()
 }
