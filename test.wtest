@@ -1,65 +1,127 @@
-import jugador.* 
+import jugador.*
+import arena.*
+import partida.*
 import wollok.game.*
 
-describe "Pruebas iniciales de combate y turnos" {
+describe "Entrega 1 - Pruebas de Dominio y Combate" {
 
-    test "Una nave recibe danio y reduce su vida" {
+    test "Una nave base recibe Daño y descuenta vida correctamente" {
         const nave = new Nave(vida = 100, danioBase = 10, position = game.at(0, 0))
         nave.recibirDanio(30)
         assert.equals(70, nave.vida())
     }
 
-    test "La vida nunca baja de 0" {
+    test "La vida de una nave nunca desciende por debajo de cero" {
         const nave = new Nave(vida = 20, danioBase = 10, position = game.at(0, 0))
         nave.recibirDanio(50)
         assert.equals(0, nave.vida())
         assert.notThat(nave.estaViva())
     }
 
-    test "EnemigoInvasor ataca si esta pegado al jugador" {
-        const jugador = new NaveJugador(position = game.at(5, 1))
-        // El invasor esta en (5, 2), es decir a 1 casilla de distancia
-        const invasor = new EnemigoInvasor(position = game.at(5, 2))
-        
-        invasor.actuarTurno([jugador], null)
 
-        // Verificamos que el jugador recibio 15 de danio (100 - 15 = 85)
-        assert.equals(85, jugador.vida())
-        // Verificamos que el invasor NO se movio porque ataco
-        assert.equals(game.at(5, 2), invasor.position())
+    test "1. Absorcion de impacto por escudo: el escudo absorbe sin tocar la vida" {
+        const jugador = new NaveJugador(position = game.at(5, 1)) // vida = 100, escudo = 20
+        jugador.recibirDanio(15)
+        
+        assert.equals(5, jugador.escudo())
+        assert.equals(100, jugador.vida())
     }
 
-    test "EnemigoInvasor baja 1 celda si esta lejos del jugador" {
+
+    test "2. Quiebre de escudo: absorbe lo que puede y el remanente pasa a la vida" {
+        const jugador = new NaveJugador(position = game.at(5, 1)) // vida = 100, escudo = 20
+        jugador.recibirDanio(30)
+        
+        assert.equals(0, jugador.escudo())
+        assert.equals(90, jugador.vida()) // 100 - (30 - 20)
+    }
+
+
+    test "3. Blindaje pasivo amortigua el Daño en EnemigoDefensivo" {
+        const defensivo = new EnemigoDefensivo(vida = 50, danioBase = 10, position = game.at(3, 8)) // blindaje = 5
+        defensivo.recibirDanio(20) // 20 - 5 = 15 de Daño efectivo
+        
+        assert.equals(35, defensivo.vida()) // 50 - 15 = 35
+    }
+
+
+    test "4. EnemigoInvasor baja 1 celda vertical si esta a mas de 1 casilla del jugador" {
         const jugador = new NaveJugador(position = game.at(5, 1))
-        // El invasor esta en (5, 4), a 3 casillas de distancia
         const invasor = new EnemigoInvasor(position = game.at(5, 4))
         
-        invasor.actuarTurno([jugador], null)
+        invasor.actuarTurno([jugador], partida.arena())
 
-        // El jugador no sufrio danio
+        // No ataco: el jugador sigue intacto
         assert.equals(100, jugador.vida())
-        // El invasor descendio a Y = 3
+        // Avanzo hacia abajo
         assert.equals(game.at(5, 3), invasor.position())
     }
 
-    test "EnemigoDefensivo ataca a distancia si comparte columna X" {
+
+    test "5. EnemigoDefensivo ataca a distancia en su columna sin moverse" {
         const jugador = new NaveJugador(position = game.at(3, 1))
-        // Esta lejos en Y, pero en la misma columna X (3)
-        const defensivo = new EnemigoDefensivo(position = game.at(3, 8))
+        const defensivo = new EnemigoDefensivo(vida = 50, danioBase = 10, position = game.at(3, 8))
 
-        defensivo.actuarTurno([jugador], null)
+        defensivo.actuarTurno([jugador], partida.arena())
 
-        // El defensivo hace 15 de danio
-        assert.equals(85, jugador.vida())
+        // El Daño base de 10 es absorbido por el escudo (20 - 10 = 10)
+        assert.equals(10, jugador.escudo())
+        assert.equals(100, jugador.vida())
+        // La posicion del defensivo sigue identica
+        assert.equals(game.at(3, 8), defensivo.position())
     }
 
-    test "EnemigoDefensivo no ataca si no comparte columna" {
-        const jugador = new NaveJugador(position = game.at(2, 1))
-        const defensivo = new EnemigoDefensivo(position = game.at(5, 8))
 
-        defensivo.actuarTurno([jugador], null)
+    test "6. Partida ejecuta el turno sobre invasores y defensivos polimorficamente" {
+        partida.enemigos().clear()
+        partida.jugadores().clear()
 
-        // El jugador queda intacto
-        assert.equals(100, jugador.vida())
+        const jugador = new NaveJugador(position = game.at(5, 1))
+        const invasorLejano = new EnemigoInvasor(position = game.at(2, 5))
+        const defensivoAlineado = new EnemigoDefensivo(vida = 50, danioBase = 10, position = game.at(5, 7))
+
+        partida.jugadores().add(jugador)
+        partida.enemigos().add(invasorLejano)
+        partida.enemigos().add(defensivoAlineado)
+
+        partida.finalizarTurno()
+
+        // El invasor se desplazo hacia abajo
+        assert.equals(game.at(2, 4), invasorLejano.position())
+        // El defensivo Daño al jugador (absorbido por el escudo)
+        assert.equals(10, jugador.escudo())
+    }
+
+
+    test "7. La partida declara victoria cuando no quedan enemigos activos" {
+        partida.enemigos().clear()
+        partida.jugadores().clear()
+
+        const jugador = new NaveJugador(position = game.at(5, 1))
+        const enemigoDebil = new EnemigoInvasor(vida = 10, danioBase = 5, position = game.at(5, 3))
+
+        partida.jugadores().add(jugador)
+        partida.enemigos().add(enemigoDebil)
+
+        //Dañio letal al enemigo
+        enemigoDebil.recibirDanio(10)
+
+        // Al finalizar turno, la partida purga al enemigo muerto
+        partida.finalizarTurno()
+
+        assert.that(partida.victoria())
+        assert.that(partida.cierreDeCombate())
+        assert.notThat(partida.partidaContinua())
+    }
+
+    
+    test "8. NaveJugador no puede avanzar a la izquierda si esta en el borde x = 0" {
+        const jugadorEnBorde = new NaveJugador(position = game.at(0, 1))
+        
+        jugadorEnBorde.moverIzquierda(partida.arena())
+
+        // Debe conservar la coordenada x = 0
+        assert.equals(0, jugadorEnBorde.position().x())
+        assert.equals(game.at(0, 1), jugadorEnBorde.position())
     }
 }
